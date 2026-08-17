@@ -1,0 +1,57 @@
+# Weave Note — 基础设施配置（server / security / database / workspace）。
+# 键名与 chatbot Config 类对齐（database 用 host/port/username/password/name）。
+# [defaults]/[default_assistant]/[api] 为模型配置段，weave-note 不加载
+# config_model.toml（合并逻辑在文件缺失时退化为本文件段）。
+
+[server]
+host = "127.0.0.1"
+port = 8201
+
+[security]
+jwt_secret_key = "weave-note-local-dev-secret-change-me-in-production-2026"
+cors_allow_origins = ["*"]
+cors_allow_credentials = true
+
+[database]
+# type: sqlite（默认，本地轻量，零外部依赖）| postgres（与 chatbot 一致）
+# sqlite 模式：path 相对 backend/ 解析；启动时自动建库建表
+# postgres 模式：使用下方 host/port/username/password/name
+type = "sqlite"
+path = "weave_note.db"
+host = "127.0.0.1"
+port = 5432
+username = "postgres"
+password = ""
+name = "weave_note"
+pool_size = 10
+max_overflow = 20
+pool_timeout = 30
+pool_recycle = 1800
+
+[workspace]
+root_dir = "user_workspaces"
+use_project_venv = true
+create_readme = true
+
+[defaults]
+temperature = 0.7
+top_p = 0.9
+top_k = ""
+presence_penalty = 1.5
+frequency_penalty = 0.0
+max_tokens = ""
+
+[default_assistant]
+name = "默认助手"
+system_prompt = "你是一个专业、有帮助的AI助手。请根据用户的问题，提供清晰、准确的回答。"
+temperature = 0.7
+top_p = 0.9
+top_k = ""
+presence_penalty = 1.5
+frequency_penalty = 0.0
+max_tokens = ""
+
+[api]
+base_url = ""
+api_key = ""
+model_name = ""
