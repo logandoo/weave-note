@@ -26,31 +26,6 @@
 | 导出       | 单笔记 Markdown / 笔记本 CSV / PDF / 截图       |
 | 文件上传   | docx/pptx/xlsx/PDF/图片 解析入库                |
 
-## 项目评价（基于代码）
-
-**架构分层清晰**：`api/`（路由）→ `services/`（业务）→ `db/`（数据）→ `core/`（配置）标准四层，
-`schemas/` 独立收口 Pydantic 模型，职责边界明确，新手指引友好。
-
-**数据库方言自适应是亮点**：`db/database.py` 通过 `IS_SQLITE` 标志在 SQLite/PostgreSQL 之间做
-引擎、PRAGMA（WAL/foreign_keys/busy_timeout）、事务锁（`FOR UPDATE`）、迁移方言（`NOW()` vs
-`CURRENT_TIMESTAMP`、`ALTER TABLE` 守卫）的差异隔离，切换后端不需要改业务代码；
-`migrations.py` 内置 pgvector 探测短路，SQLite 环境自动跳过 PG 专属迁移。
-
-**导出链路设计成熟**：`export_worker.py` 为独立后台任务（轮询 + 并发上限 + 超时清理 + 任务状态表），
-PDF 走 WeasyPrint（中文字体处理在 `pdf_fonts.py` 单独收口），文件解析各格式独立函数 + 懒加载 +
-try/except 降级（如 pymupdf4llm 失败回退 pdfminer），异常不影响服务主体。
-
-**待改进点**：
-
-- `api/notes.py` 约 2900 行，承载了路由 + 大部分业务逻辑 + PDF 渲染细节，是事实上的"上帝文件"，
-  建议后续按"路由 / 笔记业务 / 渲染"拆分；
-- `vendor_js/` 内第三方 JS 与 `backend/static/` 构建产物双轨并存，易产生版本漂移，建议统一走 npm 构建；
-- 导出依赖 WeasyPrint/Playwright，原生 Windows 无 WeasyPrint 官方包（PDF 导出不可用），
-  Windows 用户建议 WSL2 部署（详见部署前提）。
-
-**总体评价**：中小规模、工程质量较高的个人笔记服务；架构与测试在同级项目里属中上水准，
-主要债集中在单文件过大与双轨前端产物管理。
-
 ## 目录结构
 
 ```

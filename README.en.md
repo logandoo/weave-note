@@ -26,21 +26,6 @@ A **standalone note-taking application**: capture, organize and search personal 
 | Export | Markdown / CSV / PDF / screenshot |
 | File upload | docx/pptx/xlsx/PDF/image parsing |
 
-## Code Review (based on the codebase)
-
-**Clean layered architecture**: `api/` (routes) → `services/` (business) → `db/` (data) → `core/` (config) standard four-layer separation, with `schemas/` centralizing Pydantic models. Clear responsibilities, beginner-friendly.
-
-**Dialect-adaptive DB layer is a highlight**: `db/database.py` uses the `IS_SQLITE` flag to isolate SQLite/PostgreSQL differences — engine, PRAGMAs (WAL/foreign_keys/busy_timeout), transaction locking (`FOR UPDATE`), migration dialects (`NOW()` vs `CURRENT_TIMESTAMP`, `ALTER TABLE` guards). Switching backends requires no business-code changes; `migrations.py` short-circuits pgvector probes so PG-only migrations are skipped on SQLite.
-
-**Mature export pipeline**: `export_worker.py` is a standalone background task (polling + concurrency cap + timeout cleanup + task status table); PDF goes through WeasyPrint with Chinese font handling centralized in `pdf_fonts.py`; each file-parse format is a separate lazy-imported function with try/except fallbacks (e.g., pymupdf4llm → pdfminer), so failures never take down the service.
-
-**Room for improvement**:
-- `api/notes.py` (~2,900 lines) carries routes + most business logic + PDF rendering details — a de-facto god file; consider splitting into routes / note business / rendering
-- `vendor_js/` (bundled third-party JS) coexists with `backend/static/` build artifacts, which can drift; unify on the npm build
-- Export depends on WeasyPrint/Playwright; native Windows has no official WeasyPrint build (PDF export unavailable) — Windows users should deploy via WSL2 (see prerequisites)
-
-**Overall**: a mid-to-small, well-engineered personal notes service; architecture is above average for its size. The main debt is the oversized single file and the dual-track frontend artifact management.
-
 ## Directory Structure
 
 ```
