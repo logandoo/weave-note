@@ -298,3 +298,18 @@ PORT=8204 bash scripts/start.sh
 ### 日志在哪里
 
 默认 `weave-note/weave-note.log`。如果设置了 `LOG_FILE` 环境变量，则为该路径。
+
+## 安全注意事项
+
+- **默认测试账号**：首次启动自动创建 `test / 123456`。该账号无任何保护性限制，
+  **仅限本机/内网开发使用**；部署到公网前请先删除该账号（删除 `weave_note.db`
+  后改为注册自己的账号），或修改 `backend/app/main.py` 的 `_ensure_test_user`。
+- **JWT 密钥**：不硬编码入库。优先读环境变量 `JWT_SECRET_KEY`；未设置时首次启动
+  自动生成并持久化到 `backend/.jwt_secret`（已 gitignore）。公网部署务必显式配置
+  环境变量密钥。
+- **CORS**：默认 `cors_allow_origins = ["*"]` 且凭据被强制关闭（浏览器规范）；
+  需要携带凭据的跨域场景必须配置显式 origin 白名单。
+- **登出即失效**：登录签发 JWT 的同时写入 `user_sessions` 表，登出即删除该记录，
+  已登出 token 立即 401（服务端为会话事实源）。
+- **图片外链导入**（Markdown 导入）：服务端下载外部图片前会校验解析地址，
+  拒绝内网/环回/云元数据地址（SSRF 防护）。

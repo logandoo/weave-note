@@ -1,13 +1,16 @@
 """File upload API — conversation uploads are saved as-is for agentic parsing."""
 import asyncio
 import base64
+import ipaddress
 import logging
 import os
 import re
+import socket
 import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -162,6 +165,29 @@ def _clean_image_ref(ref: str) -> str:
     return ref.split()[0]
 
 
+def _assert_safe_download_url(url: str) -> None:
+    """SSRF 防护：仅允许公网 http(s) 目标，拒绝解析到内网/环回/链路本地/保留地址。
+
+    攻击面：用户上传的 Markdown 可引用任意 URL，服务端代为 GET——若不校验，
+    可探测 169.254.169.254（云元数据）、127.0.0.1 等内网服务。
+    注意：DNS 解析与连接之间仍存在 rebinding 窗口（单次解析校验为务实缓解）。
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("only http/https URLs are allowed")
+    host = parsed.hostname
+    if not host:
+        raise ValueError("URL has no host")
+    try:
+        addrs = socket.getaddrinfo(host, None)
+    except OSError as exc:
+        raise ValueError(f"cannot resolve host: {host}") from exc
+    for addr in addrs:
+        ip = ipaddress.ip_address(addr[4][0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+            raise ValueError(f"blocked non-public address: {ip}")
+
+
 async def process_imported_markdown_images(
     markdown: str,
     user_id: str,
@@ -196,6 +222,7 @@ async def process_imported_markdown_images(
         alt = m.group(1)
         url = m.group(2)
         try:
+            _assert_safe_download_url(url)
             client = get_shared_async_client()
             r = await client.get(url, timeout=30)
             r.raise_for_status()

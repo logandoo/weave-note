@@ -287,3 +287,19 @@ Delete the test user in `weave_note.db` (SQLite, default) or the `weave_note` DB
 ### Where are the logs?
 
 Default: `weave-note/weave-note.log`; or the path set via the `LOG_FILE` environment variable.
+
+## Security Notes
+
+- **Default test account**: `test / 123456` is auto-created on first start with
+  no protection — **development use only**. Before exposing to the public
+  internet, delete the database so only your registered account exists, or
+  customize `_ensure_test_user` in `backend/app/main.py`.
+- **JWT secret**: never hardcoded. Read from `JWT_SECRET_KEY` env var first;
+  otherwise auto-generated and persisted to `backend/.jwt_secret` (gitignored)
+  on first start. Set the env var explicitly for public deployments.
+- **CORS**: default `cors_allow_origins = ["*"]` with credentials force-disabled
+  (browser spec). Use an explicit origin allow-list when credentials are needed.
+- **Logout revokes instantly**: JWTs are recorded in `user_sessions` on login
+  and removed on logout — a logged-out token returns 401 immediately.
+- **External image import** (Markdown): server-side download validates resolved
+  IPs and rejects private/loopback/cloud-metadata addresses (SSRF guard).
