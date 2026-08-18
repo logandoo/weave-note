@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend lint + syntax + unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install ruff httpx
+      - name: Ruff check
+        run: ruff check backend/app/
+      - name: Backend syntax
+        run: python -m compileall -q backend/app/
+      - name: Unit tests (config)
+        working-directory: backend
+        run: |
+          python - <<'PY'
+          import sys; sys.path.insert(0, '.')
+          from app.core.config import get_config, clear_config_cache
+          c1 = get_config(); clear_config_cache(); c2 = get_config()
+          assert c1 is not c2 and c1.security_jwt_secret_key == c2.security_jwt_secret_key
+          print("config cache OK")
+          PY
+      - name: API tests (live service)
+        run: |
+          bash scripts/install_venv.sh >/dev/null 2>&1 || true
+          bash scripts/init_db.sh >/dev/null 2>&1 || true
+          bash scripts/start.sh >/dev/null 2>&1
+          sleep 4
+          curl -fsS http://127.0.0.1:8201/healthz || exit 1
+          python tests/test_security.py && python tests/test_api.py && python tests/workflows/test_core_flows.py
+
+  frontend:
+    name: Frontend typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install frontend deps
+        run: npm ci
+      - name: Typecheck
+        run: npx vue-tsc --noEmit
+      - name: Build
+        run: npm run build

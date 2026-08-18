@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from datetime import UTC, datetime
 
-from app.db.database import get_db, User, UserSession
-from app.schemas.chat import UserCreate, UserResponse, LoginRequest, TokenResponse
-from app.services.auth_service import hash_password, verify_password, create_access_token
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.deps import get_current_user
+from app.db.database import User, UserSession, get_db
+from app.schemas.chat import LoginRequest, TokenResponse, UserResponse
+from app.services.auth_service import create_access_token, hash_password, verify_password
 from app.services.workspace_service import ensure_user_workspace
-from datetime import datetime
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -74,7 +76,7 @@ async def login(request: Request, login_req: LoginRequest, db: AsyncSession = De
             detail="User account is disabled"
         )
 
-    user.last_login_at = datetime.utcnow()
+    user.last_login_at = datetime.now(UTC).replace(tzinfo=None)
     user.last_login_ip = request.client.host if request.client else None
     await db.commit()
 
@@ -89,7 +91,7 @@ async def login(request: Request, login_req: LoginRequest, db: AsyncSession = De
         session_token=access_token,
         ip_address=request.client.host if request.client else None,
         user_agent=user_agent,
-        last_active_at=datetime.utcnow()
+        last_active_at=datetime.now(UTC).replace(tzinfo=None)
     )
     db.add(user_session)
     await db.commit()
@@ -104,7 +106,7 @@ async def login(request: Request, login_req: LoginRequest, db: AsyncSession = De
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(__import__("app.core.deps", fromlist=["get_current_user"]).get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     return _user_response(current_user)
 
@@ -114,7 +116,7 @@ async def get_current_user_info(
 async def logout(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(__import__("app.core.deps", fromlist=["get_current_user"]).get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     auth_header = request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):

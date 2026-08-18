@@ -9,16 +9,15 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.database import get_db, User, Notebook, Note
 from app.core.deps import get_current_user
-from app.services.file_parser import parse_file, detect_file_type, IMAGE_EXTENSIONS
-from app.services.workspace_service import ensure_user_workspace
-from app.services.http_client import get_shared_async_client
+from app.db.database import Note, Notebook, User, get_db
 from app.schemas.file_upload import FileParseResult, FileUploadResponse
+from app.services.file_parser import IMAGE_EXTENSIONS, detect_file_type, parse_file
+from app.services.http_client import get_shared_async_client
+from app.services.workspace_service import ensure_user_workspace
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/files", tags=["files"])
@@ -61,7 +60,6 @@ async def _save_uploaded_file(
     workspace_root: str | Path,
 ) -> str:
     safe_name = _sanitize_filename(filename)
-    ext = Path(safe_name).suffix.lower() or ".bin"
     unique_name = f"{uuid.uuid4().hex}_{safe_name}"
     uploads_dir = Path(workspace_root) / "uploads"
     await asyncio.to_thread(uploads_dir.mkdir, parents=True, exist_ok=True)
@@ -78,7 +76,6 @@ async def _stream_save_uploaded_file(
 ) -> tuple[str, int]:
     """Stream an upload directly to disk without loading it into memory."""
     safe_name = _sanitize_filename(filename)
-    ext = Path(safe_name).suffix.lower() or ".bin"
     unique_name = f"{uuid.uuid4().hex}_{safe_name}"
     uploads_dir = Path(workspace_root) / "uploads"
     await asyncio.to_thread(uploads_dir.mkdir, parents=True, exist_ok=True)

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -16,9 +17,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import select, text
 
-from app.api import auth, notes, export_tasks, image_upload, file_upload
-from app.db.database import AsyncSessionLocal, User, Notebook, init_db
+from app.api import auth, export_tasks, file_upload, image_upload, notes
 from app.core.config import get_config
+from app.db.database import AsyncSessionLocal, Notebook, User, init_db
 from app.services.auth_service import hash_password
 from app.services.export_worker import export_worker
 
@@ -28,7 +29,25 @@ logger = logging.getLogger(__name__)
 config = get_config()
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 
-app = FastAPI(title="Weave Note", version="1.0.0", docs_url=None, redoc_url=None, openapi_url="/openapi.json")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if not config.security_jwt_secret_key:
+        raise RuntimeError("JWT secret key is not configured")
+
+    backend_dir = os.path.dirname(__file__)
+    os.makedirs(os.path.join(backend_dir, "audio_files"), exist_ok=True)
+    os.makedirs(os.path.join(backend_dir, "output_files"), exist_ok=True)
+    os.makedirs(os.path.join(os.path.dirname(backend_dir), "Fonts"), exist_ok=True)
+    await init_db()
+    await _ensure_test_user()
+    await export_worker.start()
+    logger.info("Weave Note 启动完成")
+    yield
+    await export_worker.stop()
+
+
+app = FastAPI(title="Weave Note", version="1.0.0", docs_url=None, redoc_url=None, openapi_url="/openapi.json", lifespan=lifespan)
 
 
 @app.exception_handler(RequestValidationError)
@@ -69,26 +88,6 @@ async def _ensure_test_user() -> None:
             db.add(Notebook(user_id=user.id, name="默认笔记本", is_default=True))
             await db.commit()
             logger.info("已创建默认笔记本")
-
-
-@app.on_event("startup")
-async def startup() -> None:
-    if not config.security_jwt_secret_key:
-        raise RuntimeError("JWT secret key is not configured")
-
-    backend_dir = os.path.dirname(__file__)
-    os.makedirs(os.path.join(backend_dir, "audio_files"), exist_ok=True)
-    os.makedirs(os.path.join(backend_dir, "output_files"), exist_ok=True)
-    os.makedirs(os.path.join(os.path.dirname(backend_dir), "Fonts"), exist_ok=True)
-    await init_db()
-    await _ensure_test_user()
-    await export_worker.start()
-    logger.info("Weave Note 启动完成")
-
-
-@app.on_event("shutdown")
-async def shutdown() -> None:
-    await export_worker.stop()
 
 
 @app.get("/healthz")

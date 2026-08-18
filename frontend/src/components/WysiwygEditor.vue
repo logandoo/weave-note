@@ -1,6 +1,6 @@
 <template>
   <div class="wysiwyg-editor-wrap" :class="tableCursorClass" style="position:relative;flex:1;overflow:hidden;display:flex;flex-direction:column">
-    <div class="wysiwyg-editor" ref="editorRef" contenteditable="true" @input="onInput" @paste="onPaste" @click="onClick" @contextmenu="onContextMenu" @mousedown="handleMouseDown" v-html="renderedContent"></div>
+    <div class="wysiwyg-editor" ref="editorRef" contenteditable="true" @input="onEditorInput" @paste="onPaste" @click="onClick" @contextmenu="onContextMenu" @mousedown="handleMouseDown" v-html="renderedContent"></div>
   </div>
   <Teleport to="body">
     <div v-show="tableEdgeButton.visible" class="table-edge-btn" :style="{ top: tableEdgeButton.y + 'px', left: tableEdgeButton.x + 'px' }" @mousedown.stop.prevent="handleTableEdgeInsert" @mouseleave="hideTableEdgeButton">+</div>
@@ -112,7 +112,7 @@ function getNodePath(node: Node, root: Node): number[] {
   const path: number[] = []
   let current: Node | null = node
   while (current && current !== root) {
-    const parent = current.parentNode
+    const parent: Node | null = current.parentNode
     if (!parent) break
     const index = Array.from(parent.childNodes).indexOf(current as ChildNode)
     path.unshift(index)
@@ -447,7 +447,7 @@ function applyToListSelections(listType: 'ol' | 'ul') {
   if (selectedBlocks.length === 0) return
   
   // Sort by DOM order
-  const allBlocks = Array.from(el.querySelectorAll('p, div, li, h1, h2, h3, h4, h5, h6, blockquote, pre'))
+  const allBlocks = Array.from(el.querySelectorAll<HTMLElement>('p, div, li, h1, h2, h3, h4, h5, h6, blockquote, pre'))
   const selectedSet = new Set(selectedBlocks)
   const orderedSelected = allBlocks.filter(b => selectedSet.has(b))
   let lastBlock: HTMLElement | null = null
@@ -532,7 +532,7 @@ function applyBlockquoteToSelections() {
   if (selectedBlocks.length === 0) return
   
   // Sort by DOM order
-  const allBlocks = Array.from(el.querySelectorAll('p, div, li, h1, h2, h3, h4, h5, h6, blockquote, pre'))
+  const allBlocks = Array.from(el.querySelectorAll<HTMLElement>('p, div, li, h1, h2, h3, h4, h5, h6, blockquote, pre'))
   const selectedSet = new Set(selectedBlocks)
   const orderedSelected = allBlocks.filter(b => selectedSet.has(b))
   
@@ -2088,6 +2088,10 @@ async function flushPendingSerialization(): Promise<void> {
   }
 }
 
+function onEditorInput(_payload: InputEvent) {
+  onInput()
+}
+
 function onInput(force = false) {
   if (!editorRef.value || suppressInputDepth.value > 0) return
 
@@ -2971,7 +2975,7 @@ function restartOlNumbering(ol: HTMLOListElement | null) {
         const newOl = document.createElement('ol')
         let current: Node | null = li
         while (current) {
-          const next = current.nextSibling
+          const next: Node | null = current.nextSibling
           newOl.appendChild(current)
           current = next
         }
@@ -2989,7 +2993,7 @@ function restartOlNumbering(ol: HTMLOListElement | null) {
     const newOl = document.createElement('ol')
     let current: Node | null = li
     while (current) {
-      const next = current.nextSibling
+      const next: Node | null = current.nextSibling
       newOl.appendChild(current)
       current = next
     }
@@ -3013,7 +3017,7 @@ function findCurrentOl(): HTMLOListElement | null {
       if ((node as HTMLElement).tagName === 'OL') return node as HTMLOListElement
       if ((node as HTMLElement).tagName === 'LI') {
         const parent = (node as HTMLElement).parentElement
-        if (parent && parent.tagName === 'OL') return parent
+        if (parent && parent.tagName === 'OL') return parent as HTMLOListElement
       }
     }
     node = node.parentNode

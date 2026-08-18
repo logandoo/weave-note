@@ -233,7 +233,7 @@ function createRenderer() {
     // CONTENT hash, stable across render passes, used by the streaming
     // renderer to adopt already-rendered blocks across re-renders.
     if (lang === 'mermaid') {
-      const hash = code.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)
+      const hash = code.split('').reduce((a: number, c: string) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)
       const id = `mermaid-${(hash >>> 0).toString(36)}-${mermaidIdCounter++}`
       const escaped = code
         .replace(/&/g, '&amp;')
@@ -246,7 +246,7 @@ function createRenderer() {
     // ECharts block: a ```echarts fence containing a standard JSON ECharts
     // option object renders as an interactive chart (SVG renderer).
     if (lang === 'echarts') {
-      const hash = code.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)
+      const hash = code.split('').reduce((a: number, c: string) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)
       const id = `echarts-${(hash >>> 0).toString(36)}-${echartsIdCounter++}`
       const escaped = code
         .replace(/&/g, '&amp;')
@@ -948,7 +948,7 @@ function rewriteImageUrls(html: string): string {
         if (!img.hasAttribute('data-original-src')) {
           img.setAttribute('data-original-src', src)
         }
-        img.setAttribute('src', `/api/files/download?path=${encodeURIComponent(src)}&token=${encodeURIComponent(token)}`)
+        img.setAttribute('src', `/api/images/serve?path=${encodeURIComponent(src)}`)
         changed = true
       }
     })
@@ -981,10 +981,12 @@ function serializeFragment(frag: DocumentFragment): string {
 
 /**
  * Rewrite local filesystem paths in <audio>/<video> src attributes (and
- * their <source src> children) to signed /api/files/download URLs (Bearer
- * headers cannot attach to media elements, same auth problem as <img>).
- * Mirrors rewriteImageUrls. <picture> sources use srcset (never src) and
- * are left untouched.
+ * their <source src> children) to /api/images/serve URLs. 注意：serve 端点
+ * 仅接受 Bearer header 认证（get_current_user），媒体标签无法携带 header，
+ * 因此这里的 serve URL 是过渡值——进入编辑器后由 WysiwygEditor 的
+ * imageResolver/mediaResolver（resolveImageUrl，blob+Bearer 拉取）替换为
+ * blob: URL 才能真正显示。旧实现指向不存在的 /api/files/download（恒 404）。
+ * <picture> sources use srcset (never src) and are left untouched.
  */
 function rewriteMediaUrls(html: string): string {
   if (!html) return html
@@ -996,8 +998,6 @@ function rewriteMediaUrls(html: string): string {
     const container = tpl.content
     const media = container.querySelectorAll('audio, video')
     if (media.length === 0) return html
-    const token = localStorage.getItem('chatllm_token')
-    if (!token) return html
     let changed = false
     const sign = (el: Element, attr: string): void => {
       const src = el.getAttribute(attr) || ''
@@ -1005,7 +1005,7 @@ function rewriteMediaUrls(html: string): string {
         if (!el.hasAttribute('data-original-src')) {
           el.setAttribute('data-original-src', src)
         }
-        el.setAttribute(attr, `/api/files/download?path=${encodeURIComponent(src)}&token=${encodeURIComponent(token)}`)
+        el.setAttribute(attr, `/api/images/serve?path=${encodeURIComponent(src)}`)
         changed = true
       }
     }
@@ -1023,7 +1023,7 @@ function rewriteMediaUrls(html: string): string {
 // (/api/files/download?path=X&token=...) instead of the canonical path X.
 // Normalize back so re-saving heals them instead of persisting expiring tokens.
 function canonicalImageSrc(src: string): string {
-  if (src.startsWith('/api/files/download')) {
+  if (src.startsWith('/api/files/download') || src.startsWith('/api/images/serve')) {
     try {
       const u = new URL(src, window.location.origin)
       const p = u.searchParams.get('path')
@@ -2324,8 +2324,8 @@ export function htmlToMarkdown(html: string): string {
           break
         }
         const rows: string[] = []
-        Array.from(el.querySelectorAll('tr')).forEach((tr, rowIdx) => {
-          const cells = Array.from(tr.querySelectorAll('th, td')).map((td) =>
+        Array.from(el.querySelectorAll<HTMLTableRowElement>('tr')).forEach((tr, rowIdx) => {
+          const cells = Array.from(tr.querySelectorAll<HTMLTableCellElement>('th, td')).map((td) =>
             processChildren(td).trim().replace(/\n/g, ' ')
           )
           rows.push('| ' + cells.join(' | ') + ' |')

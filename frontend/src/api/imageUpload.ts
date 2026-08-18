@@ -42,9 +42,11 @@ export async function resolveImageUrl(path: string): Promise<string> {
   if (path.startsWith('blob:') || path.startsWith('data:')) return path
   if (path.startsWith('http://') || path.startsWith('https://')) return path
   try {
+    // 兼容旧构建存下的 /api/files/download?path=... 签名 URL：剥离为纯 path 再走
+    // /images/serve（真实端点，Bearer header 认证）。
     if (path.startsWith('/api/files/download')) {
-      const res = await apiClient.get(path, { responseType: 'blob' })
-      return trackObjectUrl(URL.createObjectURL(res.data))
+      const u = new URL(path, window.location.origin)
+      path = u.searchParams.get('path') || path
     }
     const res = await apiClient.get('/images/serve', {
       params: { path },

@@ -1,49 +1,45 @@
 import asyncio
+import base64
 import csv
 import io
-import re
-import os
+import logging
 import mimetypes
-import zipfile
-import subprocess
+import os
+import re
 import tempfile
-import base64
+import zipfile
 from pathlib import Path
-from urllib.parse import quote, urlparse, unquote
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from markdown_it import MarkdownIt as _MarkdownIt
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, func
-from typing import List
 
-from app.db.database import get_db, User, Notebook, Note
-from app.services.workspace_service import ensure_user_workspace
+from app.core.deps import get_current_user
+from app.db.database import Note, Notebook, User, get_db
 from app.schemas.notes import (
-    NotebookCreate,
-    NotebookUpdate,
-    NotebookResponse,
-    NoteCreate,
-    NoteUpdate,
-    NoteResponse,
-    NoteListItem,
-    QuickNoteCreate,
+    BulkDeleteResponse,
+    BulkMoveResponse,
     NotebookBulkDelete,
     NotebookBulkExport,
+    NotebookCreate,
+    NotebookResponse,
+    NotebookUpdate,
     NoteBulkDelete,
     NoteBulkExport,
-    BulkDeleteResponse,
-    NoteMoveRequest,
     NoteBulkMoveRequest,
-    BulkMoveResponse,
+    NoteCreate,
+    NoteListItem,
+    NoteMoveRequest,
+    NoteResponse,
     NoteSearchResult,
+    NoteUpdate,
+    QuickNoteCreate,
 )
-from app.core.deps import get_current_user
-
-import logging
-import markdown as md_lib
-from markdown_it import MarkdownIt as _MarkdownIt
 from app.services.pdf_fonts import get_font_config_and_css
+from app.services.workspace_service import ensure_user_workspace
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +193,8 @@ def sanitize_filename(name: str) -> str:
 
 
 import json as _json_mod
+
+
 def _json_dumps_safe(obj) -> str:
     return _json_mod.dumps(obj, ensure_ascii=False)
 
@@ -439,10 +437,6 @@ def _wrap_mermaid_labels(src: str, max_chars: int = 25) -> str:
     # Only break plain text inside the canonical label delimiters. Match
     # balanced pairs of single-char delimiters (flowchart nodes) and the
     # double-bracket / paren variants.
-    pattern = re.compile(
-        r'(\[\[|\]\]|\(\[|\]\)|\[\(|\)\]|\{\{|\}\}|[\[\](){}])'
-    )
-
     def _split_long(text: str) -> str:
         if '<br' in text.lower() or '\\n' in text:
             return text
@@ -630,6 +624,7 @@ def _inline_svg_styles(svg: str) -> str:
 
 import atexit as _atexit
 import threading as _threading
+
 
 class _BrowserPool:
     """Thread-local Playwright Chromium browser + context shared across PDF
@@ -1962,7 +1957,7 @@ def _markdown_to_html_with_mermaid(content: str) -> str:
         for key, _code in mermaid_batch:
             if key in mermaid_results:
                 placeholders[key] = mermaid_results[key]
-        for key, latex, display in mathjax_batch:
+        for key, _latex, display in mathjax_batch:
             if key in mathjax_results:
                 wrapper_class = "math-display" if display else "math-inline"
                 wrapper_style = "display:block;text-align:center;margin:6pt 0;" if display else ""
@@ -2122,8 +2117,7 @@ def _build_note_md(note, workspace_root: str | None = None) -> str:
 
 def _render_note_pdf(note, workspace_root: str | None = None) -> bytes:
     """Render a single note to PDF bytes via Markdown → HTML (with Mermaid) → WeasyPrint."""
-    from weasyprint import HTML, CSS
-    from app.services.pdf_fonts import get_font_config_and_css
+    from weasyprint import CSS, HTML
 
     content = note.content or ""
     # Exports never embed media resources (product decision): strip them.
@@ -2182,7 +2176,7 @@ async def get_user_notebook(
     return result.scalar_one_or_none()
 
 
-@router.get("/notebooks", response_model=List[NotebookResponse])
+@router.get("/notebooks", response_model=list[NotebookResponse])
 async def list_notebooks(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -2201,7 +2195,7 @@ async def list_notebooks(
     return responses
 
 
-@router.get("/search", response_model=List[NoteSearchResult])
+@router.get("/search", response_model=list[NoteSearchResult])
 async def search_notes(
     q: str,
     notebook_id: str = None,
@@ -2211,7 +2205,11 @@ async def search_notes(
     if not q or not q.strip():
         return []
 
-    keyword = f"%{q.strip()}%"
+    # LIKE 通配符转义：`%`/`_`/`\` 按字面匹配。SQLAlchemy 的 ilike 默认不生成
+    # ESCAPE 子句（SQLite 等方言无默认转义符），必须显式传 escape="\\"，
+    # 否则转义后的 `\%` 无法按字面匹配，搜索 "%" 会返回空或错误命中。
+    escaped = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    keyword = f"%{escaped}%"
 
     # Build the base query joining Note with Notebook
     query = (
@@ -2219,7 +2217,7 @@ async def search_notes(
         .join(Notebook, Note.notebook_id == Notebook.id)
         .where(
             Notebook.user_id == current_user.id,
-            (Note.title.ilike(keyword)) | (Note.content.ilike(keyword))
+            (Note.title.ilike(keyword, escape="\\")) | (Note.content.ilike(keyword, escape="\\"))
         )
     )
 
@@ -2393,7 +2391,7 @@ async def set_default_notebook(
     result = await db.execute(
         select(Notebook).where(
             Notebook.user_id == current_user.id,
-            Notebook.is_default == True,
+            Notebook.is_default.is_(True),
         )
     )
     current_defaults = result.scalars().all()
@@ -2474,7 +2472,7 @@ async def delete_notebook(
     return {"status": "ok"}
 
 
-@router.get("/notebooks/{notebook_id}/notes", response_model=List[NoteListItem])
+@router.get("/notebooks/{notebook_id}/notes", response_model=list[NoteListItem])
 async def list_notes(
     notebook_id: str,
     db: AsyncSession = Depends(get_db),
@@ -2604,9 +2602,9 @@ async def export_note(
     else:
         try:
             pdf_bytes = await asyncio.to_thread(_render_note_pdf, note, workspace_root)
-        except Exception:
+        except Exception as exc:
             logger.exception("PDF rendering failed")
-            raise HTTPException(status_code=500, detail="PDF rendering failed")
+            raise HTTPException(status_code=500, detail="PDF rendering failed") from exc
         encoded = quote(f"{safe_name}.pdf", safe='')
         return StreamingResponse(
             io.BytesIO(pdf_bytes),
@@ -2774,7 +2772,7 @@ async def create_quick_note(
         nb_result = await db.execute(
             select(Notebook).where(
                 Notebook.user_id == current_user.id,
-                Notebook.is_default == True
+                Notebook.is_default.is_(True)
             )
         )
         notebook = nb_result.scalar_one_or_none()
@@ -2817,7 +2815,7 @@ async def get_default_notebook(
     result = await db.execute(
         select(Notebook).where(
             Notebook.user_id == current_user.id,
-            Notebook.is_default == True
+            Notebook.is_default.is_(True)
         )
     )
     notebook = result.scalar_one_or_none()

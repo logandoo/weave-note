@@ -10,7 +10,7 @@ A **standalone note-taking application**: capture, organize and search personal 
 - **Lightweight & embeddable**: FastAPI + async SQLAlchemy 2.0 single process; Vue3 + Vite SPA frontend
 - **Knowledge organization**: notebook → note two-level hierarchy, default notebook, quick notes, bulk operations
 - **Full-text search**: title/body keyword search (cross-dialect ILIKE via SQLAlchemy), with notebook-scoped filtering
-- **Multi-format export**: per-note Markdown, notebook CSV, PDF (WeasyPrint), screenshot (Playwright)
+- **Multi-format export**: per-note Markdown, notebook CSV (ZIP), PDF (WeasyPrint)
 - **Async export pipeline**: export tasks run in a background `export_worker` queue (concurrency 2, timeout 600s) — large exports never block the API
 - **File parsing**: upload docx / pptx / xlsx / PDF / images and auto-parse into note body (lazy imports, graceful degradation when a dependency is missing)
 - **Multi-user**: register/login/JWT, per-user `user_workspaces/` file areas
@@ -23,7 +23,7 @@ A **standalone note-taking application**: capture, organize and search personal 
 | Note CRUD | create / edit / move / bulk-delete |
 | Quick note | one-click capture into the default notebook |
 | Full-text search | keyword search with context snippets |
-| Export | Markdown / CSV / PDF / screenshot |
+| Export | per-note Markdown / notebook CSV (ZIP) / PDF |
 | File upload | docx/pptx/xlsx/PDF/image parsing |
 
 ## Directory Structure
@@ -72,7 +72,7 @@ weave-note/
 > and write the same password into `[database] password` in `backend/config.toml`
 > (the service reads config only, not environment variables).
 
-### System dependencies for optional features (PDF / screenshot export)
+### System dependencies for optional features (PDF export / chart rendering)
 
 | Feature | System deps | Install |
 |---|---|---|
@@ -248,10 +248,10 @@ bash scripts/stop.sh
 | POST | `/api/notes/quick` | quick note |
 | GET | `/api/notes/search?q=keyword` | full-text search |
 | GET | `/api/notes/notes/{id}/export?format=md` | export note |
-| GET/POST | `/api/export_tasks[/{task_id}]` | async export tasks: create/query/download/cancel/delete |
-| POST | `/api/file_upload/upload` | file upload & parse (docx/pptx/xlsx/pdf/image) |
-| POST | `/api/image_upload/upload` `/upload-media` | image upload |
-| GET | `/api/image_upload/serve` | image serving |
+| GET/POST | `/api/export-tasks[/{task_id}]` | async export tasks: create/query/download/cancel/delete |
+| POST | `/api/files/upload` | file upload & parse (docx/pptx/xlsx/pdf/image) |
+| POST | `/api/images/upload` `/upload-media` | image upload |
+| GET | `/api/images/serve` | image serving |
 
 All endpoints except register/login/healthz require:
 

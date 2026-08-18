@@ -166,17 +166,17 @@ async def run_startup_migrations(conn) -> None:
         if result.scalar_one_or_none():
             continue
 
-        if conn.dialect.name == "sqlite" and version == "users_agent_permissions":
+        if conn.dialect.name == "sqlite" and version == "users_agent_permissions" \
+                and await _sqlite_column_exists(conn, "users", "agent_permissions"):
             # SQLite 的 ALTER TABLE 不支持 IF NOT EXISTS ADD COLUMN：
             # users 表由 create_all 按模型建出（含 agent_permissions 列），
-            # 列已存在则跳过，避免 SQL 语法错误。
-            if await _sqlite_column_exists(conn, "users", "agent_permissions"):
-                logger.info("migration users_agent_permissions skipped on SQLite (column already exists)")
-                await conn.execute(
-                    text("INSERT INTO migration_versions (version) VALUES (:version)"),
-                    {"version": version},
-                )
-                continue
+            # 列已存在则跳过；列不存在时落到下方执行 ALTER 补列。
+            logger.info("migration users_agent_permissions skipped on SQLite (column already exists)")
+            await conn.execute(
+                text("INSERT INTO migration_versions (version) VALUES (:version)"),
+                {"version": version},
+            )
+            continue
 
         await conn.execute(text(statement))
         await conn.execute(

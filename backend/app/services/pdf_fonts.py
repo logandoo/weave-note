@@ -7,7 +7,6 @@ missing.
 """
 import logging
 from pathlib import Path
-from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +14,7 @@ _BACKEND_ROOT = Path(__file__).resolve().parents[2]
 FONTS_DIR = _BACKEND_ROOT / "Fonts"
 
 # (family, filename, style, weight)
-_BUNDLED_FONTS: List[Tuple[str, str, str, str]] = [
+_BUNDLED_FONTS: list[tuple[str, str, str, str]] = [
     ("Noto Sans CJK SC", "NotoSansCJKsc-Regular.otf", "normal", "400"),
     ("Noto Sans CJK SC", "NotoSansCJKsc-Bold.otf", "normal", "700"),
     ("Noto Sans Mono CJK SC", "NotoSansMonoCJKsc-Regular.otf", "normal", "400"),
@@ -24,7 +23,7 @@ _BUNDLED_FONTS: List[Tuple[str, str, str, str]] = [
 
 def _build_font_face_css(font_config) -> str:
     """Return @font-face CSS for bundled fonts that actually exist."""
-    declarations: List[str] = []
+    declarations: list[str] = []
     for family, filename, style, weight in _BUNDLED_FONTS:
         path = FONTS_DIR / filename
         if path.exists():
@@ -41,8 +40,8 @@ def get_font_config_and_css():
     Both objects must be passed to HTML.write_pdf/stylesheets so @font-face
     rules resolve correctly.
     """
-    from weasyprint.text.fonts import FontConfiguration
     from weasyprint import CSS
+    from weasyprint.text.fonts import FontConfiguration
 
     font_config = FontConfiguration()
     css_text = _build_font_face_css(font_config)

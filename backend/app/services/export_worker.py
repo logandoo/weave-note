@@ -3,17 +3,15 @@ import io
 import json
 import logging
 import os
-import time as _time
-import uuid
 import zipfile
 from contextlib import suppress
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 
+from app.api.notes import _build_note_md, _get_note_workspace_root, _render_note_pdf
 from app.core.config import get_config
-from app.db.database import AsyncSessionLocal, ExportTask, Note, Notebook, User, IS_SQLITE
-from app.api.notes import _build_note_md, _render_note_pdf, _get_note_workspace_root
+from app.db.database import IS_SQLITE, AsyncSessionLocal, ExportTask, Note, Notebook
 
 config = get_config()
 logger = logging.getLogger(__name__)
@@ -121,7 +119,7 @@ class ExportWorker:
             if task is None or task.status not in ("pending", "claimed"):
                 return
             task.status = "running"
-            task.started_at = datetime.utcnow()
+            task.started_at = datetime.now(UTC).replace(tzinfo=None)
             task.progress = 0.0
             await db.commit()
 
@@ -148,7 +146,7 @@ class ExportWorker:
                 t.progress = 1.0
                 t.file_path = file_path
                 t.filename = filename
-                t.completed_at = datetime.utcnow()
+                t.completed_at = datetime.now(UTC).replace(tzinfo=None)
                 await db.commit()
 
             logger.info("Export task completed: %s (file=%s)", task_id, filename)
@@ -175,7 +173,7 @@ class ExportWorker:
             raise ValueError("Note not found")
 
         title = note.title or "untitled"
-        from app.api.notes import sanitize_filename, _render_note_pdf, _build_note_md
+        from app.api.notes import sanitize_filename
         safe_name = sanitize_filename(title)
 
         if task.format == "pdf":
@@ -213,7 +211,7 @@ class ExportWorker:
         if not notes:
             raise ValueError("Notes not found")
 
-        from app.api.notes import sanitize_filename, _render_note_pdf, _build_note_md
+        from app.api.notes import sanitize_filename
 
         unique_name = f"notes_export_{task.id[:8]}.zip"
         file_path = os.path.join(output_dir, unique_name)
@@ -272,7 +270,7 @@ class ExportWorker:
                 stmt = (
                     update(ExportTask)
                     .where(ExportTask.id == task_id, ExportTask.status == "running")
-                    .values(progress=min(progress, 0.99), updated_at=datetime.utcnow())
+                    .values(progress=min(progress, 0.99), updated_at=datetime.now(UTC).replace(tzinfo=None))
                 )
                 await db.execute(stmt)
                 await db.commit()
@@ -288,7 +286,7 @@ class ExportWorker:
                     .values(
                         status="failed",
                         error=error[:5000],
-                        completed_at=datetime.utcnow(),
+                        completed_at=datetime.now(UTC).replace(tzinfo=None),
                     )
                 )
                 await db.execute(stmt)
@@ -304,7 +302,7 @@ class ExportWorker:
                     .where(ExportTask.id == task_id)
                     .values(
                         status="cancelled",
-                        completed_at=datetime.utcnow(),
+                        completed_at=datetime.now(UTC).replace(tzinfo=None),
                     )
                 )
                 await db.execute(stmt)
@@ -314,7 +312,7 @@ class ExportWorker:
 
     async def _cleanup_old_files(self) -> None:
         from datetime import timedelta
-        cutoff = datetime.utcnow() - timedelta(hours=CLEANUP_AGE_HOURS)
+        cutoff = datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=CLEANUP_AGE_HOURS)
         try:
             async with AsyncSessionLocal() as db:
                 stmt = select(ExportTask).where(

@@ -2,11 +2,9 @@
 import asyncio
 import base64
 import csv
-import io
 import logging
 import mimetypes
 import os
-import tempfile
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -26,11 +24,11 @@ def detect_file_type(filename: str) -> str | None:
 
 def is_image_pdf(file_path: str) -> bool:
     try:
+        from pdfminer.converter import PDFPageAggregator
+        from pdfminer.pdfdocument import PDFDocument
+        from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
         from pdfminer.pdfpage import PDFPage
         from pdfminer.pdfparser import PDFParser
-        from pdfminer.pdfdocument import PDFDocument
-        from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-        from pdfminer.converter import PDFPageAggregator
 
         with open(file_path, "rb") as f:
             parser = PDFParser(f)
@@ -58,8 +56,6 @@ def is_image_pdf(file_path: str) -> bool:
 
 def parse_docx(file_path: str) -> str:
     from docx import Document
-    import base64
-    import mimetypes
 
     doc = Document(file_path)
     parts: list[str] = []
@@ -184,7 +180,7 @@ def parse_csv_file(file_path: str) -> str:
     parts: list[str] = []
     for encoding in ("utf-8", "utf-8-sig", "gbk", "latin-1"):
         try:
-            with open(file_path, "r", encoding=encoding, newline="") as f:
+            with open(file_path, encoding=encoding, newline="") as f:
                 sample = f.read(4096)
                 f.seek(0)
                 try:
@@ -257,13 +253,9 @@ async def parse_file(file_path: str, filename: str) -> dict:
             }
 
     try:
-        if file_type == "docx":
+        if file_type == "docx" or file_type == "doc":
             markdown = await asyncio.to_thread(parse_docx, file_path)
-        elif file_type == "doc":
-            markdown = await asyncio.to_thread(parse_docx, file_path)
-        elif file_type == "pptx":
-            markdown = await asyncio.to_thread(parse_pptx, file_path)
-        elif file_type == "ppt":
+        elif file_type == "pptx" or file_type == "ppt":
             markdown = await asyncio.to_thread(parse_pptx, file_path)
         elif file_type in ("xlsx", "xls"):
             markdown = await asyncio.to_thread(parse_xlsx, file_path)

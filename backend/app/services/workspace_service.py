@@ -1,7 +1,6 @@
 import json
 import re
 from pathlib import Path
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +11,7 @@ from app.db.database import UserWorkspace
 config = get_config()
 
 
-def _slugify(value: Optional[str]) -> str:
+def _slugify(value: str | None) -> str:
     if not value:
         return "user"
     slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", value.strip()).strip("-")
@@ -45,7 +44,7 @@ def _ensure_workspace_directories(root_path: Path) -> None:
 async def ensure_user_workspace(
     db: AsyncSession,
     user_id: str,
-    username: Optional[str] = None,
+    username: str | None = None,
 ) -> UserWorkspace:
     result = await db.execute(select(UserWorkspace).where(UserWorkspace.user_id == user_id))
     workspace = result.scalar_one_or_none()

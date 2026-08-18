@@ -1,5 +1,5 @@
+
 from pydantic import BaseModel
-from typing import Optional, List
 
 
 class NotebookCreate(BaseModel):
@@ -20,22 +20,22 @@ class NotebookResponse(BaseModel):
 
 
 class NoteCreate(BaseModel):
-    title: Optional[str] = None
+    title: str | None = None
     content: str = ""
-    raw_transcription: Optional[str] = None
+    raw_transcription: str | None = None
 
 
 class NoteUpdate(BaseModel):
-    title: Optional[str] = None
-    content: Optional[str] = None
+    title: str | None = None
+    content: str | None = None
 
 
 class NoteResponse(BaseModel):
     id: str
     notebook_id: str
-    title: Optional[str]
+    title: str | None
     content: str
-    raw_transcription: Optional[str]
+    raw_transcription: str | None
     created_at: str
     updated_at: str
 
@@ -43,7 +43,7 @@ class NoteResponse(BaseModel):
 class NoteListItem(BaseModel):
     id: str
     notebook_id: str
-    title: Optional[str]
+    title: str | None
     content_preview: str
     # Total character length of the raw note content (including markdown
     # syntax). The frontend uses this to estimate token counts for the
@@ -62,15 +62,15 @@ class NoteListItem(BaseModel):
 
 class QuickNoteCreate(BaseModel):
     transcription: str
-    notebook_id: Optional[str] = None
+    notebook_id: str | None = None
 
 
 class NotebookBulkDelete(BaseModel):
-    notebook_ids: List[str]
+    notebook_ids: list[str]
 
 
 class NoteBulkDelete(BaseModel):
-    note_ids: List[str]
+    note_ids: list[str]
 
 
 class BulkDeleteResponse(BaseModel):
@@ -83,7 +83,7 @@ class NoteMoveRequest(BaseModel):
 
 
 class NoteBulkMoveRequest(BaseModel):
-    note_ids: List[str]
+    note_ids: list[str]
     target_notebook_id: str
 
 
@@ -93,11 +93,11 @@ class BulkMoveResponse(BaseModel):
 
 
 class NotebookBulkExport(BaseModel):
-    notebook_ids: List[str]
+    notebook_ids: list[str]
 
 
 class NoteBulkExport(BaseModel):
-    note_ids: List[str]
+    note_ids: list[str]
     format: str = "md"  # "md" or "pdf"
 
 
@@ -105,5 +105,5 @@ class NoteSearchResult(BaseModel):
     note_id: str
     notebook_id: str
     notebook_name: str
-    title: Optional[str]
+    title: str | None
     content_snippet: str

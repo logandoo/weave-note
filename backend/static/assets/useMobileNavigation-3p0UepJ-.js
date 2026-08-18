@@ -1,1 +1,0 @@
-import{r as t}from"./index-QX61JWdo.js";const i=767,o=t(typeof window<"u"?window.innerWidth<=i:!1);typeof window<"u"&&window.addEventListener("resize",()=>{o.value=window.innerWidth<=i});async function s(e,n,r={}){return r.replace===!0?e.replace(n):e.push(n)}export{s as n};

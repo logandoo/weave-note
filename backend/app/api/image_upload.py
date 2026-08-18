@@ -5,12 +5,12 @@ import os
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.database import get_db, User
 from app.core.deps import get_current_user
+from app.db.database import User, get_db
 from app.services.workspace_service import ensure_user_workspace
 
 logger = logging.getLogger(__name__)

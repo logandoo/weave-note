@@ -62,7 +62,7 @@ export const notesApi = {
     return data
   },
 
-  async updateNote(noteId: string, note: { title?: string; content?: string }): Promise<Note> {
+  async updateNote(noteId: string, note: { title?: string | null; content?: string }): Promise<Note> {
     const { data } = await api.put<Note>(`/notes/notes/${noteId}`, note)
     return data
   },

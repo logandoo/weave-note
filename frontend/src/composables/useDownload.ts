@@ -95,7 +95,7 @@ async function streamDownload(url: string, filename: string, options: DownloadOp
       }
     }
 
-    const blob = new Blob(chunks)
+    const blob = new Blob(chunks as BlobPart[])
     const objectUrl = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = objectUrl

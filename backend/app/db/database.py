@@ -1,20 +1,25 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Boolean, Float, Integer, JSON
-from datetime import datetime
+import logging
 import uuid
+from datetime import UTC, datetime
+
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import declarative_base, relationship
 
 from app.core.config import get_config
 from app.db import migrations
 from app.db.migrations import run_startup_migrations
-
-import logging
 
 logger = logging.getLogger(__name__)
 
 config = get_config()
 
 Base = declarative_base()
+
+
+def utcnow() -> datetime:
+    """naive UTC 当前时间（数据库 DateTime 列为 naive，与既有数据一致）。"""
+    return datetime.now(UTC).replace(tzinfo=None)
 
 IS_SQLITE = config.database_type == "sqlite"
 
@@ -30,8 +35,8 @@ class User(Base):
     last_login_at = Column(DateTime, nullable=True)
     last_login_ip = Column(String(45), nullable=True)
     agent_permissions = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
     notebooks = relationship("Notebook", back_populates="user", cascade="all, delete-orphan")
@@ -46,9 +51,9 @@ class UserSession(Base):
     session_token = Column(String(512), unique=True, index=True, nullable=False)
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
-    last_active_at = Column(DateTime, default=datetime.utcnow)
+    last_active_at = Column(DateTime, default=utcnow)
     expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     user = relationship("User", back_populates="sessions")
 
@@ -62,8 +67,8 @@ class UserWorkspace(Base):
     python_env_path = Column(String(500), nullable=True)
     node_workspace_path = Column(String(500), nullable=True)
     metadata_json = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     user = relationship("User", back_populates="workspace")
 
@@ -75,8 +80,8 @@ class Notebook(Base):
     user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False, default="新笔记本")
     is_default = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     user = relationship("User", back_populates="notebooks")
     notes = relationship("Note", back_populates="notebook", cascade="all, delete-orphan")
@@ -90,8 +95,8 @@ class Note(Base):
     title = Column(String(255), nullable=True)
     content = Column(Text, default="")
     raw_transcription = Column(Text, nullable=True)  # Original voice transcription before editing
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     notebook = relationship("Notebook", back_populates="notes")
 
@@ -110,7 +115,7 @@ class ExportTask(Base):
     file_path = Column(String(500), nullable=True)
     filename = Column(String(255), nullable=True)
     error = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
 

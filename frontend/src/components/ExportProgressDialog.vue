@@ -74,7 +74,7 @@ const props = defineProps<{
   title?: string
   subtitle?: string
   format?: 'md' | 'pdf'
-  status?: 'exporting' | 'success'
+  status?: 'idle' | 'exporting' | 'success'
   progress?: number
 }>()
 
@@ -91,7 +91,7 @@ watch(() => props.visible, (v) => {
   if (!v) minimized.value = false
 })
 
-const status = computed<'exporting' | 'success'>(() => props.status ?? 'exporting')
+const status = computed<'idle' | 'exporting' | 'success'>(() => props.status ?? 'idle')
 
 const resolvedTitle = computed(() => {
   if (status.value === 'success') return '导出成功'

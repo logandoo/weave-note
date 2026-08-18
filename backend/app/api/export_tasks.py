@@ -1,19 +1,18 @@
+import json
 import logging
 import os
 import uuid
+from datetime import UTC, datetime
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import Optional, List
-from datetime import datetime
-from urllib.parse import quote
-
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
 
-from app.db.database import get_db, ExportTask, User
 from app.core.deps import get_current_user
+from app.db.database import ExportTask, User, get_db
 
 router = APIRouter(prefix="/api/export-tasks", tags=["export-tasks"])
 logger = logging.getLogger(__name__)
@@ -22,22 +21,22 @@ logger = logging.getLogger(__name__)
 class ExportTaskCreate(BaseModel):
     task_type: str = "single"
     format: str = "pdf"
-    note_id: Optional[str] = None
-    note_ids: Optional[List[str]] = None
+    note_id: str | None = None
+    note_ids: list[str] | None = None
 
 
 class ExportTaskResponse(BaseModel):
     id: str
     task_type: str
     format: str
-    note_id: Optional[str] = None
+    note_id: str | None = None
     status: str
     progress: float
-    filename: Optional[str] = None
-    error: Optional[str] = None
-    created_at: Optional[datetime] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    filename: str | None = None
+    error: str | None = None
+    created_at: datetime | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 @router.post("", response_model=ExportTaskResponse)
@@ -64,7 +63,7 @@ async def create_export_task(
         task_type=payload.task_type,
         format=fmt,
         note_id=payload.note_id,
-        note_ids=__import__('json').dumps(payload.note_ids) if payload.note_ids else None,
+        note_ids=json.dumps(payload.note_ids) if payload.note_ids else None,
         status="pending",
         progress=0.0,
     )
@@ -74,9 +73,9 @@ async def create_export_task(
     return _to_response(task)
 
 
-@router.get("", response_model=List[ExportTaskResponse])
+@router.get("", response_model=list[ExportTaskResponse])
 async def list_export_tasks(
-    status: Optional[str] = None,
+    status: str | None = None,
     limit: int = 20,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -148,7 +147,7 @@ async def cancel_export_task(
     if task.status not in ("pending", "claimed", "running"):
         raise HTTPException(status_code=400, detail=f"Cannot cancel task in status '{task.status}'")
     task.status = "cancelled"
-    task.completed_at = datetime.utcnow()
+    task.completed_at = datetime.now(UTC).replace(tzinfo=None)
     await db.commit()
     return {"ok": True, "task_id": task_id, "status": "cancelled"}
 

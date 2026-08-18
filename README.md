@@ -10,7 +10,7 @@
 - **轻量可嵌入**：FastAPI + async SQLAlchemy 2.0 单进程即可运行；前端为 Vue3 + Vite 单页应用
 - **知识组织**：笔记本 → 笔记两级结构，支持默认笔记本、快速笔记、批量操作
 - **全文搜索**：标题/正文关键词搜索（SQLAlchemy 跨库 ILIKE 匹配），支持笔记本内过滤
-- **多格式导出**：单笔记 Markdown、笔记本 CSV、PDF（WeasyPrint）、截图（Playwright）
+- **多格式导出**：单笔记 Markdown、笔记本 CSV（ZIP 打包）、PDF（WeasyPrint）
 - **异步导出管道**：导出任务经 `export_worker` 后台队列（并发 2、超时 600s），大导出不阻塞接口
 - **文件解析**：上传 docx / pptx / xlsx / PDF / 图片自动解析为正文（懒加载，缺依赖时优雅降级）
 - **多用户**：注册/登录/JWT，每用户独立 `user_workspaces/` 文件区
@@ -23,7 +23,7 @@
 | 笔记 CRUD  | 新建 / 编辑 / 移动 / 批量删除                   |
 | 快速笔记   | 一键记录，自动落入默认笔记本                    |
 | 全文搜索   | 关键词命中笔记，返回上下文片段                  |
-| 导出       | 单笔记 Markdown / 笔记本 CSV / PDF / 截图       |
+| 导出       | 单笔记 Markdown / 笔记本 CSV（ZIP）/ PDF |
 | 文件上传   | docx/pptx/xlsx/PDF/图片 解析入库                |
 
 ## 目录结构
@@ -71,12 +71,12 @@ weave-note/
 > `export PGPASSWORD='<强密码>'`（init_db.sh 透传该变量），并把同一密码写入
 > `backend/config.toml` 的 `[database] password`（服务连接只读 config，不走环境变量）。
 
-### 可选功能的系统依赖（PDF 导出 / 截图导出）
+### 可选功能的系统依赖（PDF 导出 / 图表公式渲染）
 
 | 功能                   | 系统依赖              | 安装方式                                                                                                                                                                       |
 | ---------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | PDF 导出（WeasyPrint） | Pango 等系统库        | macOS:`brew install pango`；<br />Ubuntu: `sudo apt install libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libharfbuzz-subset0 fonts-noto-cjk`                             |
-| 截图导出（Playwright） | Chromium 浏览器二进制 | 创建 venv 后执行`.venv/bin/python -m playwright install chromium`（Windows 环境为 `.venv\Scripts\python.exe`；Ubuntu 再加 `python -m playwright install-deps chromium`） |
+| 图表/公式渲染（Playwright） | Chromium 浏览器二进制 | 创建 venv 后执行`.venv/bin/python -m playwright install chromium`（Windows 环境为 `.venv\Scripts\python.exe`；Ubuntu 再加 `python -m playwright install-deps chromium`）。缺失时 mermaid/ECharts/LaTeX 图表导出降级为占位/文本 |
 
 > **Windows**：WeasyPrint 无官方免依赖的 Windows 构建（需要 Pango 动态库），
 > 原生 Windows 下 PDF 导出不可用——weave-note 建议整体部署在 WSL2 内；
@@ -258,10 +258,10 @@ bash scripts/stop.sh
 | POST     | `/api/notes/quick`                           | 快速笔记                                |
 | GET      | `/api/notes/search?q=关键词`                 | 全文搜索                                |
 | GET      | `/api/notes/notes/{id}/export?format=md`     | 导出笔记                                |
-| GET/POST | `/api/export_tasks[/{task_id}]`              | 异步导出任务：创建/查询/下载/取消/删除  |
-| POST     | `/api/file_upload/upload`                    | 文件上传解析（docx/pptx/xlsx/pdf/图片） |
-| POST     | `/api/image_upload/upload` `/upload-media` | 图片上传                                |
-| GET      | `/api/image_upload/serve`                    | 图片访问                                |
+| GET/POST | `/api/export-tasks[/{task_id}]`              | 异步导出任务：创建/查询/下载/取消/删除  |
+| POST     | `/api/files/upload`                    | 文件上传解析（docx/pptx/xlsx/pdf/图片） |
+| POST     | `/api/images/upload` `/upload-media` | 图片上传                                |
+| GET      | `/api/images/serve`                    | 图片访问                                |
 
 除注册/登录/健康检查外，其余接口均需请求头：
 

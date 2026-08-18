@@ -223,7 +223,7 @@ export const useNotesStore = defineStore('notes', () => {
     return note
   }
 
-  async function updateNote(noteId: string, data: { title?: string; content?: string }) {
+  async function updateNote(noteId: string, data: { title?: string | null; content?: string }) {
     const note = await notesApi.updateNote(noteId, data)
     currentNote.value = note
 
