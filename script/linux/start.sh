@@ -4,7 +4,7 @@
 # 可用环境变量覆盖运行参数：PYTHON / HOST / PORT / LOG_FILE / PID_FILE。
 set -euo pipefail
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FAMILY_DIR="$(dirname "$DIR")"
 
 if [[ -n "${PYTHON:-}" ]]; then
@@ -16,7 +16,7 @@ else
     if [[ -f "$_v/Scripts/python.exe" ]]; then VENV_PYTHON="$_v/Scripts/python.exe"; break; fi
   done
   if [[ -z "$VENV_PYTHON" ]]; then
-    echo "未找到 Python 虚拟环境。请先执行：bash scripts/install_venv.sh" >&2
+    echo "未找到 Python 虚拟环境。请先执行：bash script/linux/install_venv.sh" >&2
     exit 1
   fi
 fi

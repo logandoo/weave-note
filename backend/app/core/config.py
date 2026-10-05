@@ -219,9 +219,10 @@ class Config:
 
     @property
     def server_scheme(self) -> str:
-        """Match the SSL auto-detection in scripts/start.sh: when key.pem and
-        cert.pem exist in the backend directory, uvicorn is launched with
-        --ssl-keyfile/--ssl-certfile, so the API is https."""
+        """Scheme hint for link building: key.pem + cert.pem in the backend
+        directory imply an HTTPS deployment. NOTE: the lifecycle scripts do NOT
+        launch uvicorn with TLS — terminate TLS at a reverse proxy or pass
+        --ssl-keyfile/--ssl-certfile explicitly when serving."""
         key_pem = self.backend_root / "key.pem"
         cert_pem = self.backend_root / "cert.pem"
         return "https" if (key_pem.exists() and cert_pem.exists()) else "http"

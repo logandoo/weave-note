@@ -19,3 +19,4 @@ config_model.toml
 
 # 自动生成的 JWT 密钥（config.py 首次启动生成）
 .jwt_secret
+.vibeweaver/

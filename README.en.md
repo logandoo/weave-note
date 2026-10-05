@@ -43,7 +43,7 @@ weave-note/
 │   ├── config.toml          # service config ([database] type switches sqlite/postgres)
 │   └── requirements.txt
 ├── frontend/                # Vue3 + Vite source
-└── scripts/                 # install_venv / init_db / build / start / stop / restart
+└── script/linux/            # all entry points: start/stop/restart/project_build/install_venv/init_db
 ```
 
 ## Prerequisites
@@ -86,9 +86,9 @@ weave-note/
 This project does not depend on any outer directory layout:
 
 ```bash
-bash scripts/install_venv.sh   # project .venv + deps (idempotent; PYTHON_BIN to override interpreter)
-bash scripts/init_db.sh        # initializes by [database] type: sqlite no-PG; postgres idempotent create+prebuild
-bash scripts/start.sh          # start (auto-picks .venv)
+bash script/linux/install_venv.sh   # project .venv + deps (idempotent; PYTHON_BIN to override interpreter)
+bash script/linux/init_db.sh        # initializes by [database] type: sqlite no-PG; postgres idempotent create+prebuild
+bash script/linux/start.sh          # start (auto-picks .venv)
 curl http://127.0.0.1:8201/healthz
 ```
 
@@ -99,7 +99,7 @@ curl http://127.0.0.1:8201/healthz
 **Recommended (self-contained)**: run the project script — it handles SQLite pre-create / PostgreSQL idempotent create + prebuild (repeatable):
 
 ```bash
-bash scripts/init_db.sh
+bash script/linux/init_db.sh
 ```
 
 **SQLite (default)**: nothing to do; `backend/weave_note.db` is created on first launch.
@@ -117,10 +117,10 @@ psql -U postgres -h 127.0.0.1 -d postgres \
   -c "SELECT 1 FROM pg_database WHERE datname='weave_note'"
 ```
 
-Inside the family monorepo you may also use the family entry (equivalent to running each project's `scripts/init_db.sh` in order; weave_mem is always PG+pgvector):
+Inside the family monorepo you may also use the family entry (equivalent to running each project's `script/linux/init_db.sh` in order; weave_mem is always PG+pgvector):
 
 ```bash
-bash <family-root>/scripts/init_databases.sh
+bash <family-root>/script/linux/init_databases.sh
 ```
 
 ### 2. Virtual Environment
@@ -128,7 +128,7 @@ bash <family-root>/scripts/init_databases.sh
 **Recommended (self-contained)**:
 
 ```bash
-bash scripts/install_venv.sh
+bash script/linux/install_venv.sh
 ```
 
 Equivalent manual steps:
@@ -139,7 +139,7 @@ python3.11 -m venv .venv     # or python3.13
 ```
 
 > If a shared venv already exists (e.g., family root `.venv` or `/tmp/weave-family-venv`),
-> this step can be skipped; `scripts/start.sh` probes them in order.
+> this step can be skipped; `script/linux/start.sh` probes them in order.
 
 ### 3. Configuration
 
@@ -179,8 +179,8 @@ Supported environment variables:
 
 ```bash
 # run from the project root
-chmod +x scripts/*.sh
-bash scripts/start.sh
+chmod +x script/linux/*.sh
+bash script/linux/start.sh
 ```
 
 Defaults written: PID `weave-note/weave-note.pid`, log `weave-note/weave-note.log`.
@@ -216,7 +216,7 @@ Log in with `test / 123456` in the browser: create notebooks, create/edit/delete
 ### 6. Stop
 
 ```bash
-bash scripts/stop.sh
+bash script/linux/stop.sh
 ```
 
 ## Core API
@@ -277,7 +277,7 @@ psql -U postgres -h 127.0.0.1 -d weave_note -c 'SELECT 1'
 Change `port` in `backend/config.toml`, or override at startup:
 
 ```bash
-PORT=8204 bash scripts/start.sh
+PORT=8204 bash script/linux/start.sh
 ```
 
 ### Forgot the test account password
@@ -287,6 +287,10 @@ Delete the test user in `weave_note.db` (SQLite, default) or the `weave_note` DB
 ### Where are the logs?
 
 Default: `weave-note/weave-note.log`; or the path set via the `LOG_FILE` environment variable.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## Security Notes
 

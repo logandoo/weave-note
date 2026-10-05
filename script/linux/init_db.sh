@@ -5,11 +5,11 @@
 #                       （无 venv 也无需任何操作：服务首次启动自动建）
 #   type = "postgres" → 幂等创建 weave_note PG 数据库 + 经 init_db 预建表
 #
-# 用法：bash scripts/init_db.sh
+# 用法：bash script/linux/init_db.sh
 # PG 参数可用环境变量覆盖：PGUSER / PGHOST / PGPORT / PGPASSWORD
 set -euo pipefail
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FAMILY_DIR="$(dirname "$DIR")"
 PGUSER="${PGUSER:-postgres}"
 PGHOST="${PGHOST:-127.0.0.1}"
@@ -40,7 +40,7 @@ cfg_db_type() {
 
 precreate_tables() {
   if [[ -z "$VENV_PYTHON" ]]; then
-    echo "  未找到 Python venv，跳过预建表（服务首次启动时自动创建；可先运行 scripts/install_venv.sh）"
+    echo "  未找到 Python venv，跳过预建表（服务首次启动时自动创建；可先运行 script/linux/install_venv.sh）"
     return 0
   fi
   if (cd "$DIR/backend" && "$VENV_PYTHON" -c \

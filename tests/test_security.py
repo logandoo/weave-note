@@ -1,6 +1,6 @@
 """weave-note 安全修复验收测试（wave-2026-08-18）。
 
-运行前提：weave-note 服务已在 127.0.0.1:8201 运行（scripts/start.sh）。
+运行前提：weave-note 服务已在 127.0.0.1:8201 运行（script/linux/start.sh）。
 测试用例从 README API 表 + acceptance.md wave1 标准导出。
 """
 import sys

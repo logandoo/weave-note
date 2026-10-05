@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 停止 weave-note。
 set -euo pipefail
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PID_FILE="${PID_FILE:-$DIR/weave-note.pid}"
 
 if [[ ! -f "$PID_FILE" ]]; then

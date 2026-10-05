@@ -1,6 +1,6 @@
 """weave-note 核心 API 回归测试（wave-2026-08-18 重建）。
 
-运行前提：weave-note 服务已在 127.0.0.1:8201 运行（scripts/start.sh）。
+运行前提：weave-note 服务已在 127.0.0.1:8201 运行（script/linux/start.sh）。
 覆盖：auth 全流程 / notebook CRUD / note CRUD / 搜索 / 移动 / 默认笔记本 /
 批量操作 / 导出任务 / 文件与图片上传端点存在性。所有用例从 README API 表导出。
 """

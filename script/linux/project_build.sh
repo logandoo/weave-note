@@ -2,7 +2,7 @@
 # 构建 weave-note 前端（Vite）并把 dist 部署到 backend/static（后端静态服务目录）。
 set -euo pipefail
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FRONTEND_DIR="$DIR/frontend"
 STATIC_DIR="$DIR/backend/static"
 

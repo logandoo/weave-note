@@ -43,7 +43,7 @@ weave-note/
 │   ├── config.toml          # 服务配置（[database] type 切换 sqlite/postgres）
 │   └── requirements.txt
 ├── frontend/                # Vue3 + Vite 前端源码
-└── scripts/                 # install_venv / init_db / build / start / stop / restart
+└── script/linux/            # start/stop/restart/project_build/install_venv/init_db（全部脚本入口）
 ```
 
 ## 部署前提
@@ -87,9 +87,9 @@ weave-note/
 本项目不依赖外层目录结构，独立部署只需：
 
 ```bash
-bash scripts/install_venv.sh   # 本项目 .venv + 依赖（幂等；PYTHON_BIN 可指定解释器）
-bash scripts/init_db.sh        # 按 [database] type 初始化：sqlite 免 PG；postgres 幂等建库+预建表
-bash scripts/start.sh          # 启动（自动选用 .venv）
+bash script/linux/install_venv.sh   # 本项目 .venv + 依赖（幂等；PYTHON_BIN 可指定解释器）
+bash script/linux/init_db.sh        # 按 [database] type 初始化：sqlite 免 PG；postgres 幂等建库+预建表
+bash script/linux/start.sh          # 启动（自动选用 .venv）
 curl http://127.0.0.1:8201/healthz
 ```
 
@@ -101,7 +101,7 @@ curl http://127.0.0.1:8201/healthz
 SQLite 预建 / PostgreSQL 幂等建库 + 预建表（幂等可重复）：
 
 ```bash
-bash scripts/init_db.sh
+bash script/linux/init_db.sh
 ```
 
 **SQLite（默认）**：实际无需任何操作，首次启动自动创建 `backend/weave_note.db`。
@@ -121,10 +121,10 @@ psql -U postgres -h 127.0.0.1 -d postgres \
 ```
 
 在 family 多项目目录下也可用家族级入口（等价于依次调用各项目的
-`scripts/init_db.sh`，weave_mem 恒 PG+pgvector）：
+`script/linux/init_db.sh`，weave_mem 恒 PG+pgvector）：
 
 ```bash
-bash <family根>/scripts/init_databases.sh
+bash <family根>/script/linux/init_databases.sh
 ```
 
 ### 2. 创建虚拟环境并安装依赖
@@ -132,7 +132,7 @@ bash <family根>/scripts/init_databases.sh
 **推荐（自包含）**：
 
 ```bash
-bash scripts/install_venv.sh
+bash script/linux/install_venv.sh
 ```
 
 等价的手工步骤：
@@ -143,7 +143,7 @@ python3.11 -m venv .venv     # 或 python3.13
 ```
 
 > 若已有可用的共享虚拟环境（如 family 仓库根目录的 `.venv` 或 `/tmp/weave-family-venv`），
-> 本步骤可跳过；`scripts/start.sh` 会自动按顺序探测选用。
+> 本步骤可跳过；`script/linux/start.sh` 会自动按顺序探测选用。
 
 ### 3. 修改配置
 
@@ -183,8 +183,8 @@ path = "weave_note.db"
 
 ```bash
 # 在项目根目录执行
-chmod +x scripts/*.sh
-bash scripts/start.sh
+chmod +x script/linux/*.sh
+bash script/linux/start.sh
 ```
 
 脚本默认写入：
@@ -226,7 +226,7 @@ open http://127.0.0.1:8201/
 ### 6. 停止
 
 ```bash
-bash scripts/stop.sh
+bash script/linux/stop.sh
 ```
 
 ## 核心 API
@@ -288,7 +288,7 @@ psql -U postgres -h 127.0.0.1 -d weave_note -c 'SELECT 1'
 修改 `backend/config.toml` 的 `port`，或启动时覆盖：
 
 ```bash
-PORT=8204 bash scripts/start.sh
+PORT=8204 bash script/linux/start.sh
 ```
 
 ### 忘记测试账号密码
@@ -298,6 +298,10 @@ PORT=8204 bash scripts/start.sh
 ### 日志在哪里
 
 默认 `weave-note/weave-note.log`。如果设置了 `LOG_FILE` 环境变量，则为该路径。
+
+## 变更记录
+
+见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 安全注意事项
 
