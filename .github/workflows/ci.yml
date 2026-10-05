@@ -35,9 +35,9 @@ jobs:
           PY
       - name: API tests (live service)
         run: |
-          bash scripts/install_venv.sh >/dev/null 2>&1 || true
-          bash scripts/init_db.sh >/dev/null 2>&1 || true
-          bash scripts/start.sh >/dev/null 2>&1
+          bash script/linux/install_venv.sh >/dev/null 2>&1 || true
+          bash script/linux/init_db.sh >/dev/null 2>&1 || true
+          bash script/linux/start.sh >/dev/null 2>&1
           sleep 4
           curl -fsS http://127.0.0.1:8201/healthz || exit 1
           python tests/test_security.py && python tests/test_api.py && python tests/workflows/test_core_flows.py && python tests/test_ssrf.py
